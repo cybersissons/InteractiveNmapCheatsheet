@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nmap Practical Examples - Interactive Network Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #1a1a1a;
+            --text-primary: #ffffff;
+            --text-secondary: #e0e0e0;
+            --accent-cyan: #00d4ff;
+            --accent-green: #39ff14;
+            --accent-amber: #ff8c00;
+            --error-red: #ff4444;
+            --muted-gray: #2a2a2a;
+        }
+        
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+        
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        
+        /* Animated background */
+        .particle-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at 50% 50%, #001122 0%, #000000 100%);
+        }
+        
+        /* Glass morphism */
+        .glass {
+            background: rgba(26, 26, 26, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Glow effects */
+        .glow-cyan { box-shadow: 0 0 20px rgba(0, 212, 255, 0.3); }
+        .glow-green { box-shadow: 0 0 20px rgba(57, 255, 20, 0.3); }
+        .glow-amber { box-shadow: 0 0 20px rgba(255, 140, 0, 0.3); }
+        
+        /* Animations */
+        .fade-in { opacity: 0; transform: translateY(20px); }
+        .slide-in-left { opacity: 0; transform: translateX(-50px); }
+        .slide-in-right { opacity: 0; transform: translateX(50px); }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent-cyan);
+            border-radius: 4px;
+        }
+        
+        /* Network simulator styles */
+        .network-node {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .network-node:hover {
+            transform: scale(1.1);
+        }
+        
+        .network-node.selected {
+            stroke: var(--accent-cyan);
+            stroke-width: 3;
+        }
+        
+        .network-link {
+            stroke: rgba(0, 212, 255, 0.3);
+            stroke-width: 2;
+            transition: all 0.3s ease;
+        }
+        
+        .network-link.active {
+            stroke: var(--accent-green);
+            stroke-width: 3;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Terminal output styles */
+        .terminal-output {
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid var(--accent-cyan);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            line-height: 1.4;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .terminal-line {
+            padding: 2px 0;
+        }
+        
+        .terminal-prompt { color: var(--accent-green); }
+        .terminal-command { color: var(--accent-cyan); }
+        .terminal-output-text { color: var(--text-primary); }
+        .terminal-error { color: var(--error-red); }
+        .terminal-success { color: var(--accent-green); }
+        .terminal-info { color: var(--accent-amber); }
+        
+        /* Scenario cards */
+        .scenario-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .scenario-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 212, 255, 0.2);
+        }
+        
+        .scenario-card.active {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="particle-bg" id="particleBg"></div>
+    
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 z-50 glass">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="font-orbitron text-xl font-bold text-cyan-400">
+                    NMAP BUILDER
+                </div>
+                <div class="hidden md:flex space-x-6">
+                    <a href="index.html" class="text-white hover:text-cyan-300 transition-colors">Builder</a>
+                    <a href="reference.html" class="text-white hover:text-cyan-300 transition-colors">Reference</a>
+                    <a href="examples.html" class="text-cyan-400 hover:text-cyan-300 transition-colors">Examples</a>
+                    <a href="safety.html" class="text-white hover:text-cyan-300 transition-colors">Safety</a>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobileMenuBtn" class="text-white">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Header Section -->
+    <section class="pt-24 pb-12 px-6">
+        <div class="container mx-auto text-center">
+            <div class="hero-content fade-in">
+                <h1 class="font-orbitron text-4xl md:text-6xl font-bold mb-6">
+                    <span class="text-cyan-400">PRACTICAL</span> <span class="text-green-400">EXAMPLES</span>
+                </h1>
+                <p class="text-lg text-gray-400 max-w-3xl mx-auto mb-8">
+                    Learn Nmap through interactive scenarios and network simulations. 
+                    Practice safe scanning techniques in a controlled environment.
+                </p>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Main Content -->
+    <section class="pb-12 px-6">
+        <div class="container mx-auto">
+            <div class="grid lg:grid-cols-3 gap-8">
+                <!-- Scenarios Panel -->
+                <div class="lg:col-span-1 slide-in-left">
+                    <div class="glass rounded-lg p-6 glow-cyan">
+                        <h3 class="font-orbitron text-xl font-bold text-cyan-400 mb-4">Scanning Scenarios</h3>
+                        
+                        <div class="space-y-4">
+                            <div class="scenario-card glass rounded-lg p-4 border border-gray-700 active" data-scenario="web-server">
+                                <h4 class="font-bold text-green-400 mb-2">Web Server Audit</h4>
+                                <p class="text-sm text-gray-400 mb-2">Scan a web server for common ports and services</p>
+                                <div class="font-mono text-xs text-gray-500">Difficulty: Easy</div>
+                            </div>
+                            
+                            <div class="scenario-card glass rounded-lg p-4 border border-gray-700" data-scenario="network-inventory">
+                                <h4 class="font-bold text-amber-400 mb-2">Network Inventory</h4>
+                                <p class="text-sm text-gray-400 mb-2">Discover all devices on a local network</p>
+                                <div class="font-mono text-xs text-gray-500">Difficulty: Medium</div>
+                            </div>
+                            
+                            <div class="scenario-card glass rounded-lg p-4 border border-gray-700" data-scenario="security-assessment">
+                                <h4 class="font-bold text-red-400 mb-2">Security Assessment</h4>
+                                <p class="text-sm text-gray-400 mb-2">Comprehensive security scan with vulnerability detection</p>
+                                <div class="font-mono text-xs text-gray-500">Difficulty: Hard</div>
+                            </div>
+                            
+                            <div class="scenario-card glass rounded-lg p-4 border border-gray-700" data-scenario="stealth-recon">
+                                <h4 class="font-bold text-cyan-400 mb-2">Stealth Reconnaissance</h4>
+                                <p class="text-sm text-gray-400 mb-2">Covert scanning techniques to avoid detection</p>
+                                <div class="font-mono text-xs text-gray-500">Difficulty: Hard</div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 pt-6 border-t border-gray-700">
+                            <h4 class="font-bold text-amber-400 mb-3">Scan Controls</h4>
+                            <div class="space-y-3">
+                                <button id="startScan" class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded transition-colors">
+                                    Start Scan
+                                </button>
+                                <button id="stopScan" class="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded transition-colors" disabled>
+                                    Stop Scan
+                                </button>
+                                <button id="resetNetwork" class="w-full px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors">
+                                    Reset Network
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Network Visualization -->
+                <div class="lg:col-span-1 slide-in-left">
+                    <div class="glass rounded-lg p-6 glow-green">
+                        <h3 class="font-orbitron text-xl font-bold text-green-400 mb-4">Network Topology</h3>
+                        <div id="networkChart" style="width: 100%; height: 400px;"></div>
+                        
+                        <div class="mt-4 text-sm text-gray-400">
+                            <div class="flex items-center mb-2">
+                                <div class="w-4 h-4 bg-green-500 rounded-full mr-2"></div>
+                                <span>Online Host</span>
+                            </div>
+                            <div class="flex items-center mb-2">
+                                <div class="w-4 h-4 bg-red-500 rounded-full mr-2"></div>
+                                <span>Offline Host</span>
+                            </div>
+                            <div class="flex items-center mb-2">
+                                <div class="w-4 h-4 bg-amber-500 rounded-full mr-2"></div>
+                                <span>Scanning</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 bg-cyan-500 rounded-full mr-2"></div>
+                                <span>Target Selected</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Terminal Output -->
+                <div class="lg:col-span-1 slide-in-right">
+                    <div class="glass rounded-lg p-6 glow-amber">
+                        <h3 class="font-orbitron text-xl font-bold text-amber-400 mb-4">Scan Output</h3>
+                        <div id="terminalOutput" class="terminal-output rounded p-4">
+                            <div class="terminal-line">
+                                <span class="terminal-prompt">nmap-builder@simulator:~$</span> 
+                                <span class="terminal-info">Select a scenario and click Start Scan to begin</span>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h4 class="font-bold text-cyan-400 mb-2">Current Command</h4>
+                            <div id="currentCommand" class="font-mono text-sm p-2 bg-gray-800 rounded text-gray-300">
+                                No command selected
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h4 class="font-bold text-green-400 mb-2">Scan Progress</h4>
+                            <div class="w-full bg-gray-700 rounded-full h-2">
+                                <div id="scanProgress" class="bg-green-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                            <div id="progressText" class="text-sm text-gray-400 mt-1">Ready to scan</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Scenario Details -->
+    <section class="pb-12 px-6">
+        <div class="container mx-auto">
+            <div id="scenarioDetails" class="glass rounded-lg p-8 fade-in">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+        </div>
+    </section>
+    
+    <!-- Footer -->
+    <footer class="py-8 px-6 border-t border-gray-800">
+        <div class="container mx-auto text-center">
+            <p class="text-gray-400">
+                © 2025 Nmap Command Builder. Educational tool for cybersecurity professionals.
+            </p>
+            <p class="text-sm text-gray-500 mt-2">
+                Always obtain proper authorization before scanning networks.
+            </p>
+        </div>
+    </footer>
+    
+    <script>
+        class NetworkSimulator {
+            constructor() {
+                this.scenarios = {
+                    'web-server': {
+                        title: 'Web Server Audit',
+                        description: 'Perform a comprehensive scan of a web server to identify running services, open ports, and potential security issues.',
+                        command: 'nmap -sS -sV -p 1-1000 -T4 webserver.example.com',
+                        steps: [
+                            'Host discovery and port scanning',
+                            'Service version detection',
+                            'Common web service identification',
+                            'Security assessment report'
+                        ],
+                        network: {
+                            nodes: [
+                                { id: 'scanner', name: 'Scanner', x: 100, y: 200, status: 'scanner' },
+                                { id: 'webserver', name: 'Web Server', x: 400, y: 150, status: 'online' },
+                                { id: 'db', name: 'Database', x: 400, y: 250, status: 'online' },
+                                { id: 'firewall', name: 'Firewall', x: 250, y: 200, status: 'online' }
+                            ],
+                            links: [
+                                { source: 'scanner', target: 'firewall' },
+                                { source: 'firewall', target: 'webserver' },
+                                { source: 'firewall', target: 'db' }
+                            ]
+                        },
+                        output: [
+                            'Starting Nmap scan...',
+                            'Host webserver.example.com (192.168.1.100) appears to be up.',
+                            'PORT     STATE SERVICE    VERSION',
+                            '22/tcp   open  ssh        OpenSSH 8.2p1',
+                            '80/tcp   open  http       Apache httpd 2.4.41',
+                            '443/tcp  open  https      Apache httpd 2.4.41',
+                            '3306/tcp open  mysql      MySQL 8.0.19',
+                            '8080/tcp open  http-proxy Squid http proxy 4.10',
+                            'Service detection performed.',
+                            'Nmap done: 1 IP address (1 host up) scanned.'
+                        ]
+                    },
+                    'network-inventory': {
+                        title: 'Network Inventory',
+                        description: 'Discover and catalog all devices on a local network, identifying active hosts and their basic characteristics.',
+                        command: 'nmap -sn -T4 192.168.1.0/24',
+                        steps: [
+                            'Network host discovery',
+                            'Device enumeration',
+                            'IP address mapping',
+                            'Inventory report generation'
+                        ],
+                        network: {
+                            nodes: [
+                                { id: 'scanner', name: 'Scanner', x: 100, y: 200, status: 'scanner' },
+                                { id: 'router', name: 'Router', x: 300, y: 100, status: 'online' },
+                                { id: 'pc1', name: 'PC-1', x: 400, y: 150, status: 'online' },
+                                { id: 'pc2', name: 'PC-2', x: 400, y: 200, status: 'offline' },
+                                { id: 'server', name: 'Server', x: 400, y: 250, status: 'online' },
+                                { id: 'printer', name: 'Printer', x: 400, y: 300, status: 'online' },
+                                { id: 'phone1', name: 'Phone-1', x: 500, y: 175, status: 'online' },
+                                { id: 'phone2', name: 'Phone-2', x: 500, y: 225, status: 'online' }
+                            ],
+                            links: [
+                                { source: 'scanner', target: 'router' },
+                                { source: 'router', target: 'pc1' },
+                                { source: 'router', target: 'pc2' },
+                                { source: 'router', target: 'server' },
+                                { source: 'router', target: 'printer' },
+                                { source: 'router', target: 'phone1' },
+                                { source: 'router', target: 'phone2' }
+                            ]
+                        },
+                        output: [
+                            'Starting network discovery scan...',
+                            'Scanning 256 hosts in 192.168.1.0/24',
+                            'Host 192.168.1.1 appears to be up (Router).',
+                            'Host 192.168.1.10 appears to be up (PC-1).',
+                            'Host 192.168.1.10 appears to be up (PC-2).',
+                            'Host 192.168.1.20 appears to be up (Server).',
+                            'Host 192.168.1.25 appears to be up (Printer).',
+                            'Host 192.168.1.30 appears to be up (Phone-1).',
+                            'Host 192.168.1.35 appears to be up (Phone-2).',
+                            '6 hosts discovered out of 256 scanned.',
+                            'Network inventory scan completed.'
+                        ]
+                    },
+                    'security-assessment': {
+                        title: 'Security Assessment',
+                        description: 'Conduct a comprehensive security evaluation including vulnerability scanning, service enumeration, and risk assessment.',
+                        command: 'nmap -A -sV -sC --script vuln -p- target.com',
+                        steps: [
+                            'Full port scanning',
+                            'Service enumeration',
+                            'Vulnerability assessment',
+                            'Risk analysis and reporting'
+                        ],
+                        network: {
+                            nodes: [
+                                { id: 'scanner', name: 'Scanner', x: 100, y: 200, status: 'scanner' },
+                                { id: 'target', name: 'Target System', x: 400, y: 200, status: 'online' },
+                                { id: 'ids', name: 'IDS/IPS', x: 250, y: 150, status: 'online' },
+                                { id: 'firewall', name: 'Firewall', x: 250, y: 250, status: 'online' }
+                            ],
+                            links: [
+                                { source: 'scanner', target: 'ids' },
+                                { source: 'ids', target: 'firewall' },
+                                { source: 'firewall', target: 'target' }
+                            ]
+                        },
+                        output: [
+                            'Starting comprehensive security assessment...',
+                            'Full port scan initiated (-p-)',
+                            'Service version detection enabled',
+                            'Running default NSE scripts...',
+                            'Vulnerability scanning scripts loaded',
+                            'PORT     STATE SERVICE     VERSION',
+                            '22/tcp   open  ssh         OpenSSH 7.6p1',
+                            '| ssh-brute: Accounts: No valid accounts found',
+                            '80/tcp   open  http        Apache httpd 2.4.29',
+                            '| http-vuln-cve2017-1001000: VULNERABLE',
+                            '| http-enum: Found: /admin/, /login/, /backup/',
+                            '443/tcp  open  https       Apache httpd 2.4.29',
+                            '| ssl-heartbleed: VULNERABLE',
+                            '|_ssl-cert: Subject: commonName=target.com',
+                            '3306/tcp open  mysql       MySQL 5.7.32',
+                            '| mysql-brute: Accounts: No valid accounts found',
+                            'Security assessment completed.',
+                            'WARNING: 2 vulnerabilities detected!'
+                        ]
+                    },
+                    'stealth-recon': {
+                        title: 'Stealth Reconnaissance',
+                        description: 'Perform covert network reconnaissance using advanced evasion techniques to avoid detection by security systems.',
+                        command: 'nmap -sS -T1 -f --data-length 10 -D RND:5 target.com',
+                        steps: [
+                            'Stealth scan preparation',
+                            'Packet fragmentation',
+                            'Decoy deployment',
+                            'Covert data collection'
+                        ],
+                        network: {
+                            nodes: [
+                                { id: 'scanner', name: 'Scanner', x: 100, y: 200, status: 'scanner' },
+                                { id: 'decoy1', name: 'Decoy 1', x: 150, y: 100, status: 'decoy' },
+                                { id: 'decoy2', name: 'Decoy 2', x: 150, y: 150, status: 'decoy' },
+                                { id: 'decoy3', name: 'Decoy 3', x: 150, y: 250, status: 'decoy' },
+                                { id: 'decoy4', name: 'Decoy 4', x: 150, y: 300, status: 'decoy' },
+                                { id: 'ids', name: 'IDS/IPS', x: 300, y: 175, status: 'online' },
+                                { id: 'target', name: 'Target', x: 450, y: 200, status: 'online' }
+                            ],
+                            links: [
+                                { source: 'scanner', target: 'ids' },
+                                { source: 'decoy1', target: 'ids' },
+                                { source: 'decoy2', target: 'ids' },
+                                { source: 'decoy3', target: 'ids' },
+                                { source: 'decoy4', target: 'ids' },
+                                { source: 'ids', target: 'target' }
+                            ]
+                        },
+                        output: [
+                            'Initializing stealth reconnaissance mode...',
+                            'Configuring timing template: Paranoid (-T1)',
+                            'Enabling packet fragmentation (-f)',
+                            'Generating decoy traffic patterns',
+                            'Deploying 5 random decoy hosts',
+                            'Starting covert port scan...',
+                            'Packets fragmented to evade detection',
+                            'Traffic mixed with decoy sources',
+                            'Scanning under radar...',
+                            'PORT     STATE    SERVICE',
+                            '22/tcp   filtered ssh',
+                            '80/tcp   open     http',
+                            '443/tcp  open     https',
+                            'Scan completed without detection',
+                            'Stealth reconnaissance successful'
+                        ]
+                    }
+                };
+                
+                this.currentScenario = 'web-server';
+                this.isScanning = false;
+                this.scanProgress = 0;
+                this.outputIndex = 0;
+                this.scanInterval = null;
+                this.chart = null;
+                
+                this.init();
+            }
+            
+            init() {
+                this.setupEventListeners();
+                this.initializeNetworkChart();
+                this.loadScenario(this.currentScenario);
+                this.initializeAnimations();
+                this.initializeParticles();
+            }
+            
+            setupEventListeners() {
+                // Scenario selection
+                document.querySelectorAll('.scenario-card').forEach(card => {
+                    card.addEventListener('click', (e) => {
+                        document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('active'));
+                        e.currentTarget.classList.add('active');
+                        const scenario = e.currentTarget.dataset.scenario;
+                        this.loadScenario(scenario);
+                    });
+                });
+                
+                // Scan controls
+                document.getElementById('startScan').addEventListener('click', () => this.startScan());
+                document.getElementById('stopScan').addEventListener('click', () => this.stopScan());
+                document.getElementById('resetNetwork').addEventListener('click', () => this.resetNetwork());
+            }
+            
+            loadScenario(scenarioId) {
+                this.currentScenario = scenarioId;
+                const scenario = this.scenarios[scenarioId];
+                
+                // Update current command
+                document.getElementById('currentCommand').textContent = scenario.command;
+                
+                // Update scenario details
+                const detailsContainer = document.getElementById('scenarioDetails');
+                detailsContainer.innerHTML = `
+                    <h3 class="font-orbitron text-2xl font-bold text-cyan-400 mb-4">${scenario.title}</h3>
+                    <p class="text-gray-300 mb-6">${scenario.description}</p>
+                    
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-bold text-green-400 mb-3">Execution Steps</h4>
+                            <ol class="list-decimal list-inside space-y-2 text-gray-300">
+                                ${scenario.steps.map(step => `<li>${step}</li>`).join('')}
+                            </ol>
+                        </div>
+                        
+                        <div>
+                            <h4 class="font-bold text-amber-400 mb-3">Command Breakdown</h4>
+                            <div class="font-mono text-sm text-gray-300 bg-gray-800 p-3 rounded mb-4">
+                                ${scenario.command}
+                            </div>
+                            <div class="text-sm text-gray-400">
+                                ${this.getCommandExplanation(scenario.command)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Update network visualization
+                this.updateNetworkChart(scenario.network);
+                
+                // Reset terminal
+                this.resetTerminal();
+            }
+            
+            getCommandExplanation(command) {
+                const explanations = {
+                    'web-server': '-sS: TCP SYN scan, -sV: Service detection, -p 1-1000: Scan ports 1-1000, -T4: Aggressive timing',
+                    'network-inventory': '-sn: Host discovery, -T4: Aggressive timing, 192.168.1.0/24: Target network',
+                    'security-assessment': '-A: Aggressive scan, -sV: Service detection, -sC: Default scripts, --script vuln: Vulnerability scripts, -p-: All ports',
+                    'stealth-recon': '-sS: TCP SYN scan, -T1: Paranoid timing, -f: Fragment packets, --data-length 10: Add padding, -D RND:5: Random decoys'
+                };
+                return explanations[this.currentScenario] || 'Custom scan configuration';
+            }
+            
+            initializeNetworkChart() {
+                const chartDom = document.getElementById('networkChart');
+                this.chart = echarts.init(chartDom);
+                
+                const option = {
+                    backgroundColor: 'transparent',
+                    series: [{
+                        type: 'graph',
+                        layout: 'none',
+                        symbolSize: 40,
+                        roam: false,
+                        label: {
+                            show: true,
+                            color: '#ffffff',
+                            fontSize: 10
+                        },
+                        edgeSymbol: ['circle', 'arrow'],
+                        edgeSymbolSize: [4, 10],
+                        lineStyle: {
+                            color: 'rgba(0, 212, 255, 0.3)',
+                            width: 2
+                        },
+                        itemStyle: {
+                            color: '#00d4ff'
+                        },
+                        data: [],
+                        links: []
+                    }]
+                };
+                
+                this.chart.setOption(option);
+            }
+            
+            updateNetworkChart(network) {
+                const nodeColors = {
+                    'scanner': '#39ff14',
+                    'online': '#00d4ff',
+                    'offline': '#ff4444',
+                    'scanning': '#ff8c00',
+                    'decoy': '#888888'
+                };
+                
+                const data = network.nodes.map(node => ({
+                    id: node.id,
+                    name: node.name,
+                    x: node.x,
+                    y: node.y,
+                    itemStyle: {
+                        color: nodeColors[node.status] || '#00d4ff'
+                    }
+                }));
+                
+                const links = network.links.map(link => ({
+                    source: link.source,
+                    target: link.target
+                }));
+                
+                this.chart.setOption({
+                    series: [{
+                        data: data,
+                        links: links
+                    }]
+                });
+            }
+            
+            startScan() {
+                if (this.isScanning) return;
+                
+                this.isScanning = true;
+                this.scanProgress = 0;
+                this.outputIndex = 0;
+                
+                document.getElementById('startScan').disabled = true;
+                document.getElementById('stopScan').disabled = false;
+                
+                this.clearTerminal();
+                this.addTerminalLine('nmap-builder@simulator:~$', 'terminal-prompt');
+                this.addTerminalLine(` ${this.scenarios[this.currentScenario].command}`, 'terminal-command');
+                
+                this.scanInterval = setInterval(() => {
+                    this.updateScan();
+                }, 500);
+            }
+            
+            stopScan() {
+                if (!this.isScanning) return;
+                
+                this.isScanning = false;
+                clearInterval(this.scanInterval);
+                
+                document.getElementById('startScan').disabled = false;
+                document.getElementById('stopScan').disabled = true;
+                
+                this.addTerminalLine('\nScan interrupted by user.', 'terminal-info');
+                this.updateProgress(0, 'Scan stopped');
+            }
+            
+            updateScan() {
+                const scenario = this.scenarios[this.currentScenario];
+                const totalSteps = scenario.output.length;
+                
+                if (this.outputIndex < totalSteps) {
+                    const output = scenario.output[this.outputIndex];
+                    let className = 'terminal-output-text';
+                    
+                    if (output.includes('ERROR') || output.includes('FAILED')) {
+                        className = 'terminal-error';
+                    } else if (output.includes('open') || output.includes('success') || output.includes('completed')) {
+                        className = 'terminal-success';
+                    } else if (output.includes('Starting') || output.includes('Scanning')) {
+                        className = 'terminal-info';
+                    }
+                    
+                    this.addTerminalLine(output, className);
+                    this.outputIndex++;
+                    
+                    this.scanProgress = (this.outputIndex / totalSteps) * 100;
+                    this.updateProgress(this.scanProgress, `Scanning... ${Math.round(this.scanProgress)}%`);
+                } else {
+                    this.completeScan();
+                }
+            }
+            
+            completeScan() {
+                this.isScanning = false;
+                clearInterval(this.scanInterval);
+                
+                document.getElementById('startScan').disabled = false;
+                document.getElementById('stopScan').disabled = true;
+                
+                this.updateProgress(100, 'Scan completed');
+            }
+            
+            resetNetwork() {
+                this.stopScan();
+                this.resetTerminal();
+                this.updateProgress(0, 'Network reset');
+                
+                // Reset network visualization
+                this.updateNetworkChart(this.scenarios[this.currentScenario].network);
+            }
+            
+            resetTerminal() {
+                const terminal = document.getElementById('terminalOutput');
+                terminal.innerHTML = `
+                    <div class="terminal-line">
+                        <span class="terminal-prompt">nmap-builder@simulator:~$</span> 
+                        <span class="terminal-info">Select a scenario and click Start Scan to begin</span>
+                    </div>
+                `;
+            }
+            
+            clearTerminal() {
+                document.getElementById('terminalOutput').innerHTML = '';
+            }
+            
+            addTerminalLine(text, className = '') {
+                const terminal = document.getElementById('terminalOutput');
+                const line = document.createElement('div');
+                line.className = `terminal-line ${className}`;
+                line.textContent = text;
+                terminal.appendChild(line);
+                terminal.scrollTop = terminal.scrollHeight;
+            }
+            
+            updateProgress(percentage, text) {
+                document.getElementById('scanProgress').style.width = `${percentage}%`;
+                document.getElementById('progressText').textContent = text;
+            }
+            
+            initializeAnimations() {
+                const observerOptions = {
+                    threshold: 0.1,
+                    rootMargin: '0px 0px -50px 0px'
+                };
+                
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            this.animateElement(entry.target);
+                        }
+                    });
+                }, observerOptions);
+                
+                document.querySelectorAll('.fade-in, .slide-in-left, .slide-in-right').forEach(el => {
+                    observer.observe(el);
+                });
+            }
+            
+            animateElement(element) {
+                if (element.classList.contains('fade-in')) {
+                    anime({
+                        targets: element,
+                        opacity: [0, 1],
+                        translateY: [20, 0],
+                        duration: 600,
+                        easing: 'easeOutQuad'
+                    });
+                } else if (element.classList.contains('slide-in-left')) {
+                    anime({
+                        targets: element,
+                        opacity: [0, 1],
+                        translateX: [-50, 0],
+                        duration: 600,
+                        easing: 'easeOutQuad'
+                    });
+                } else if (element.classList.contains('slide-in-right')) {
+                    anime({
+                        targets: element,
+                        opacity: [0, 1],
+                        translateX: [50, 0],
+                        duration: 600,
+                        easing: 'easeOutQuad'
+                    });
+                }
+            }
+            
+            initializeParticles() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const container = document.getElementById('particleBg');
+                
+                canvas.style.position = 'absolute';
+                canvas.style.top = '0';
+                canvas.style.left = '0';
+                canvas.style.width = '100%';
+                canvas.style.height = '100%';
+                canvas.style.pointerEvents = 'none';
+                
+                container.appendChild(canvas);
+                
+                const resizeCanvas = () => {
+                    canvas.width = window.innerWidth;
+                    canvas.height = window.innerHeight;
+                };
+                
+                resizeCanvas();
+                window.addEventListener('resize', resizeCanvas);
+                
+                const particles = [];
+                const particleCount = window.innerWidth < 768 ? 20 : 30;
+                
+                for (let i = 0; i < particleCount; i++) {
+                    particles.push({
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height,
+                        vx: (Math.random() - 0.5) * 0.3,
+                        vy: (Math.random() - 0.5) * 0.3,
+                        size: Math.random() * 1.5 + 0.5,
+                        opacity: Math.random() * 0.3 + 0.1
+                    });
+                }
+                
+                const animate = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    particles.forEach(particle => {
+                        particle.x += particle.vx;
+                        particle.y += particle.vy;
+                        
+                        if (particle.x < 0) particle.x = canvas.width;
+                        if (particle.x > canvas.width) particle.x = 0;
+                        if (particle.y < 0) particle.y = canvas.height;
+                        if (particle.y > canvas.height) particle.y = 0;
+                        
+                        ctx.beginPath();
+                        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(0, 212, 255, ${particle.opacity})`;
+                        ctx.fill();
+                    });
+                    
+                    requestAnimationFrame(animate);
+                };
+                
+                animate();
+            }
+        }
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            new NetworkSimulator();
+        });
+    </script>
+</body>
+</html>

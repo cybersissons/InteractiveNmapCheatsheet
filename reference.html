@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nmap Command Reference - Interactive Cheat Sheet</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #1a1a1a;
+            --text-primary: #ffffff;
+            --text-secondary: #e0e0e0;
+            --accent-cyan: #00d4ff;
+            --accent-green: #39ff14;
+            --accent-amber: #ff8c00;
+            --error-red: #ff4444;
+            --muted-gray: #2a2a2a;
+        }
+        
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+        
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        
+        /* Animated background */
+        .particle-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at 50% 50%, #001122 0%, #000000 100%);
+        }
+        
+        /* Glass morphism */
+        .glass {
+            background: rgba(26, 26, 26, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Command syntax highlighting */
+        .syntax-command { color: var(--accent-cyan); }
+        .syntax-flag { color: var(--accent-green); }
+        .syntax-target { color: var(--accent-amber); }
+        .syntax-comment { color: var(--text-secondary); }
+        
+        /* Glow effects */
+        .glow-cyan { box-shadow: 0 0 20px rgba(0, 212, 255, 0.3); }
+        .glow-green { box-shadow: 0 0 20px rgba(57, 255, 20, 0.3); }
+        .glow-amber { box-shadow: 0 0 20px rgba(255, 140, 0, 0.3); }
+        
+        /* Animations */
+        .fade-in { opacity: 0; transform: translateY(20px); }
+        .slide-in-left { opacity: 0; transform: translateX(-50px); }
+        .slide-in-right { opacity: 0; transform: translateX(50px); }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent-cyan);
+            border-radius: 4px;
+        }
+        
+        /* Search and filter styles */
+        .search-input {
+            background: rgba(42, 42, 42, 0.8);
+            border: 1px solid rgba(0, 212, 255, 0.5);
+            color: white;
+        }
+        
+        .search-input:focus {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+            outline: none;
+        }
+        
+        .filter-btn {
+            background: rgba(42, 42, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--text-secondary);
+            transition: all 0.3s ease;
+        }
+        
+        .filter-btn.active {
+            background: var(--accent-cyan);
+            color: var(--bg-primary);
+            border-color: var(--accent-cyan);
+        }
+        
+        .filter-btn:hover {
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+        
+        .filter-btn.active:hover {
+            color: var(--bg-primary);
+        }
+        
+        /* Command card styles */
+        .command-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .command-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 212, 255, 0.2);
+        }
+        
+        .difficulty-easy { border-left: 4px solid var(--accent-green); }
+        .difficulty-medium { border-left: 4px solid var(--accent-amber); }
+        .difficulty-hard { border-left: 4px solid var(--error-red); }
+        
+        /* Expandable content */
+        .expandable-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        
+        .expandable-content.expanded {
+            max-height: 500px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="particle-bg" id="particleBg"></div>
+    
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 z-50 glass">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="font-orbitron text-xl font-bold text-cyan-400">
+                    NMAP BUILDER
+                </div>
+                <div class="hidden md:flex space-x-6">
+                    <a href="index.html" class="text-white hover:text-cyan-300 transition-colors">Builder</a>
+                    <a href="reference.html" class="text-cyan-400 hover:text-cyan-300 transition-colors">Reference</a>
+                    <a href="examples.html" class="text-white hover:text-cyan-300 transition-colors">Examples</a>
+                    <a href="safety.html" class="text-white hover:text-cyan-300 transition-colors">Safety</a>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobileMenuBtn" class="text-white">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Header Section -->
+    <section class="pt-24 pb-12 px-6">
+        <div class="container mx-auto text-center">
+            <div class="hero-content fade-in">
+                <h1 class="font-orbitron text-4xl md:text-6xl font-bold mb-6">
+                    <span class="text-cyan-400">COMMAND</span> <span class="text-green-400">REFERENCE</span>
+                </h1>
+                <p class="text-lg text-gray-400 max-w-3xl mx-auto mb-8">
+                    Comprehensive database of Nmap commands, flags, and options. 
+                    Search, filter, and copy commands for your network reconnaissance needs.
+                </p>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Search and Filter Section -->
+    <section class="pb-8 px-6">
+        <div class="container mx-auto">
+            <div class="glass rounded-lg p-6 mb-8 fade-in">
+                <div class="flex flex-col md:flex-row gap-4 mb-6">
+                    <div class="flex-1">
+                        <input type="text" id="searchInput" placeholder="Search commands, flags, or descriptions..." 
+                               class="search-input w-full px-4 py-3 rounded-lg font-mono">
+                    </div>
+                    <div class="flex gap-2 flex-wrap">
+                        <button class="filter-btn active px-4 py-2 rounded-lg" data-category="all">All</button>
+                        <button class="filter-btn px-4 py-2 rounded-lg" data-category="discovery">Discovery</button>
+                        <button class="filter-btn px-4 py-2 rounded-lg" data-category="port-scan">Port Scan</button>
+                        <button class="filter-btn px-4 py-2 rounded-lg" data-category="service">Service</button>
+                        <button class="filter-btn px-4 py-2 rounded-lg" data-category="os">OS Detect</button>
+                        <button class="filter-btn px-4 py-2 rounded-lg" data-category="output">Output</button>
+                        <button class="filter-btn px-4 py-2 rounded-lg" data-category="timing">Timing</button>
+                        <button class="filter-btn px-4 py-2 rounded-lg" data-category="evasion">Evasion</button>
+                    </div>
+                </div>
+                
+                <div class="flex gap-4 items-center">
+                    <span class="text-sm text-gray-400">Difficulty:</span>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="filterEasy" class="mr-2 text-green-400" checked>
+                        <span class="text-sm text-green-400">Easy</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="filterMedium" class="mr-2 text-amber-400" checked>
+                        <span class="text-sm text-amber-400">Medium</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="filterHard" class="mr-2 text-red-400" checked>
+                        <span class="text-sm text-red-400">Hard</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Command Grid -->
+    <section class="pb-12 px-6">
+        <div class="container mx-auto">
+            <div id="commandGrid" class="grid gap-4">
+                <!-- Commands will be populated by JavaScript -->
+            </div>
+            
+            <div id="noResults" class="text-center py-12 hidden">
+                <div class="text-6xl mb-4">🔍</div>
+                <h3 class="text-xl font-bold text-gray-400 mb-2">No commands found</h3>
+                <p class="text-gray-500">Try adjusting your search terms or filters</p>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Footer -->
+    <footer class="py-8 px-6 border-t border-gray-800">
+        <div class="container mx-auto text-center">
+            <p class="text-gray-400">
+                © 2025 Nmap Command Builder. Educational tool for cybersecurity professionals.
+            </p>
+            <p class="text-sm text-gray-500 mt-2">
+                Always obtain proper authorization before scanning networks.
+            </p>
+        </div>
+    </footer>
+    
+    <script>
+        // Nmap Command Database
+        const commandDatabase = [
+            // Discovery Commands
+            {
+                id: 1,
+                category: 'discovery',
+                difficulty: 'easy',
+                command: 'nmap -sn 192.168.1.0/24',
+                flags: ['-sn'],
+                description: 'Host discovery without port scanning (ping sweep)',
+                details: 'Uses ICMP echo requests, TCP SYN to port 443, TCP ACK to port 80, and ICMP timestamp requests. Requires root privileges for ARP scan on local networks.',
+                example: 'nmap -sn 192.168.1.0/24',
+                useCase: 'Network inventory, finding live hosts'
+            },
+            {
+                id: 2,
+                category: 'discovery',
+                difficulty: 'easy',
+                command: 'nmap -PR -sn 192.168.1.0/24',
+                flags: ['-PR', '-sn'],
+                description: 'ARP ping scan for local network discovery',
+                details: 'Forces ARP ping for host discovery. Most reliable method on Ethernet networks, works even when hosts block ICMP.',
+                example: 'nmap -PR -sn 192.168.1.0/24',
+                useCase: 'Local network discovery, bypassing ICMP filters'
+            },
+            {
+                id: 3,
+                category: 'discovery',
+                difficulty: 'medium',
+                command: 'nmap -Pn target.com',
+                flags: ['-Pn'],
+                description: 'Skip host discovery, treat host as online',
+                details: 'Useful when ICMP is blocked or when scanning single known hosts. Prevents Nmap from giving up on apparently down hosts.',
+                example: 'nmap -Pn 192.168.1.100',
+                useCase: 'Scanning hosts with strict firewalls, known online targets'
+            },
+            
+            // Port Scanning Commands
+            {
+                id: 4,
+                category: 'port-scan',
+                difficulty: 'easy',
+                command: 'nmap -sS target.com',
+                flags: ['-sS'],
+                description: 'TCP SYN scan (stealth scan)',
+                details: 'Sends SYN packets and waits for SYN-ACK response. Never completes TCP handshake, making it stealthier. Requires root privileges.',
+                example: 'nmap -sS -p 1-65535 target.com',
+                useCase: 'Standard port scanning, stealth reconnaissance'
+            },
+            {
+                id: 5,
+                category: 'port-scan',
+                difficulty: 'easy',
+                command: 'nmap -sT target.com',
+                flags: ['-sT'],
+                description: 'TCP connect() scan',
+                details: 'Completes full TCP handshake. More noisy but works without root privileges. Uses OS connect() system call.',
+                example: 'nmap -sT -p 80,443,8080 target.com',
+                useCase: 'Scanning without root access, when SYN scan fails'
+            },
+            {
+                id: 6,
+                category: 'port-scan',
+                difficulty: 'medium',
+                command: 'nmap -sU target.com',
+                flags: ['-sU'],
+                description: 'UDP port scanning',
+                details: 'Sends UDP packets to target ports. Slower than TCP scans due to timeout requirements. Useful for discovering UDP services.',
+                example: 'nmap -sU -p 53,161,123 target.com',
+                useCase: 'Discovering UDP services (DNS, SNMP, NTP)'
+            },
+            {
+                id: 7,
+                category: 'port-scan',
+                difficulty: 'easy',
+                command: 'nmap -p 22,80,443 target.com',
+                flags: ['-p'],
+                description: 'Scan specific ports',
+                details: 'Allows specification of individual ports, ranges, or comma-separated lists. Can combine TCP and UDP port specifications.',
+                example: 'nmap -p T:22,80,443,U:53,161 target.com',
+                useCase: 'Targeted port scanning, service-specific reconnaissance'
+            },
+            {
+                id: 8,
+                category: 'port-scan',
+                difficulty: 'easy',
+                command: 'nmap -p- target.com',
+                flags: ['-p-'],
+                description: 'Scan all 65535 ports',
+                details: 'Shortcut for scanning ports 1 through 65535. Much slower but ensures complete coverage. Consider using with timing flags.',
+                example: 'nmap -p- -T4 target.com',
+                useCase: 'Comprehensive port scanning, security audits'
+            },
+            
+            // Service Detection
+            {
+                id: 9,
+                category: 'service',
+                difficulty: 'easy',
+                command: 'nmap -sV target.com',
+                flags: ['-sV'],
+                description: 'Service version detection',
+                details: 'Probes open ports to determine service/version info. Uses various techniques including banner grabbing and protocol-specific probes.',
+                example: 'nmap -sV -p 80,443 target.com',
+                useCase: 'Identifying services, vulnerability assessment'
+            },
+            {
+                id: 10,
+                category: 'service',
+                difficulty: 'medium',
+                command: 'nmap -sV --version-intensity 5 target.com',
+                flags: ['-sV', '--version-intensity'],
+                description: 'Aggressive version detection',
+                details: 'Increases probe intensity for version detection (0-9, default 7). Higher values try more probes but take longer.',
+                example: 'nmap -sV --version-intensity 9 target.com',
+                useCase: 'When standard version detection fails'
+            },
+            
+            // OS Detection
+            {
+                id: 11,
+                category: 'os',
+                difficulty: 'medium',
+                command: 'nmap -O target.com',
+                flags: ['-O'],
+                description: 'Operating system detection',
+                details: 'Sends TCP/IP fingerprinting probes to determine OS. Requires at least one open and one closed port for best results.',
+                example: 'nmap -O -sV target.com',
+                useCase: 'OS identification, target profiling'
+            },
+            {
+                id: 12,
+                category: 'os',
+                difficulty: 'medium',
+                command: 'nmap -O --osscan-guess target.com',
+                flags: ['-O', '--osscan-guess'],
+                description: 'OS detection with guessing',
+                details: 'When Nmap can\'t determine exact OS, provides closest guesses based on available fingerprints.',
+                example: 'nmap -O --osscan-guess target.com',
+                useCase: 'When OS detection is inconclusive'
+            },
+            
+            // Output Options
+            {
+                id: 13,
+                category: 'output',
+                difficulty: 'easy',
+                command: 'nmap -oX output.xml target.com',
+                flags: ['-oX'],
+                description: 'XML output format',
+                details: 'Generates machine-readable XML output. Useful for automated processing, parsing by other tools, and structured data analysis.',
+                example: 'nmap -oX scan_results.xml target.com',
+                useCase: 'Automated processing, tool integration'
+            },
+            {
+                id: 14,
+                category: 'output',
+                difficulty: 'easy',
+                command: 'nmap -oN output.txt target.com',
+                flags: ['-oN'],
+                description: 'Normal output to file',
+                details: 'Saves human-readable output to specified file. Same format as console output but redirected to file.',
+                example: 'nmap -oN scan_report.txt target.com',
+                useCase: 'Documentation, report generation'
+            },
+            {
+                id: 15,
+                category: 'output',
+                difficulty: 'easy',
+                command: 'nmap -oA output target.com',
+                flags: ['-oA'],
+                description: 'Output in all formats',
+                details: 'Generates normal, XML, and grepable formats with specified basename. Creates .nmap, .xml, and .gnmap files.',
+                example: 'nmap -oA scan_results target.com',
+                useCase: 'Comprehensive documentation, multiple tool compatibility'
+            },
+            
+            // Timing and Performance
+            {
+                id: 16,
+                category: 'timing',
+                difficulty: 'easy',
+                command: 'nmap -T4 target.com',
+                flags: ['-T4'],
+                description: 'Aggressive timing template',
+                details: 'Faster scanning with -T4 timing. Balances speed and accuracy. Good for LAN environments and fast networks.',
+                example: 'nmap -T4 -p- target.com',
+                useCase: 'Faster scanning, time-sensitive operations'
+            },
+            {
+                id: 17,
+                category: 'timing',
+                difficulty: 'medium',
+                command: 'nmap --min-rate 1000 target.com',
+                flags: ['--min-rate'],
+                description: 'Minimum packet transmission rate',
+                details: 'Sends packets at least at specified rate (packets per second). Useful for controlling scan speed and network impact.',
+                example: 'nmap --min-rate 1000 --max-rate 2000 target.com',
+                useCase: 'Rate-limited environments, IDS evasion'
+            },
+            
+            // Evasion Techniques
+            {
+                id: 18,
+                category: 'evasion',
+                difficulty: 'hard',
+                command: 'nmap -f target.com',
+                flags: ['-f'],
+                description: 'Fragment packets',
+                details: 'Splits IP header over several packets to evade simple packet filters. Some firewalls can\'t handle fragmented packets properly.',
+                example: 'nmap -f -sS target.com',
+                useCase: 'Firewall evasion, packet filter bypass'
+            },
+            {
+                id: 19,
+                category: 'evasion',
+                difficulty: 'hard',
+                command: 'nmap -D RND:10 target.com',
+                flags: ['-D'],
+                description: 'Decoy scanning',
+                details: 'Hides scan among decoys. Uses random IP addresses as decoys to obscure the real scanner source.',
+                example: 'nmap -D RND:10,ME target.com',
+                useCase: 'Stealth scanning, source obfuscation'
+            },
+            
+            // NSE Scripts
+            {
+                id: 20,
+                category: 'service',
+                difficulty: 'medium',
+                command: 'nmap --script default target.com',
+                flags: ['--script'],
+                description: 'Run default NSE scripts',
+                details: 'Runs a collection of safe and useful scripts for service discovery and basic enumeration. Good starting point for script scanning.',
+                example: 'nmap --script default -sV target.com',
+                useCase: 'Automated service enumeration, basic vulnerability checks'
+            },
+            {
+                id: 21,
+                category: 'service',
+                difficulty: 'hard',
+                command: 'nmap --script vuln target.com',
+                flags: ['--script'],
+                description: 'Run vulnerability detection scripts',
+                details: 'Runs scripts that check for known vulnerabilities. Can be intrusive and should only be used on authorized targets.',
+                example: 'nmap --script vuln -sV target.com',
+                useCase: 'Vulnerability assessment, security auditing'
+            }
+        ];
+        
+        class CommandReference {
+            constructor() {
+                this.commands = commandDatabase;
+                this.filteredCommands = [...this.commands];
+                this.currentCategory = 'all';
+                this.init();
+            }
+            
+            init() {
+                this.setupEventListeners();
+                this.renderCommands();
+                this.initializeAnimations();
+                this.initializeParticles();
+            }
+            
+            setupEventListeners() {
+                // Search input
+                document.getElementById('searchInput').addEventListener('input', (e) => {
+                    this.filterCommands();
+                });
+                
+                // Category filters
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.currentCategory = e.target.dataset.category;
+                        this.filterCommands();
+                    });
+                });
+                
+                // Difficulty filters
+                ['filterEasy', 'filterMedium', 'filterHard'].forEach(id => {
+                    document.getElementById(id).addEventListener('change', () => {
+                        this.filterCommands();
+                    });
+                });
+            }
+            
+            filterCommands() {
+                const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+                const showEasy = document.getElementById('filterEasy').checked;
+                const showMedium = document.getElementById('filterMedium').checked;
+                const showHard = document.getElementById('filterHard').checked;
+                
+                this.filteredCommands = this.commands.filter(cmd => {
+                    // Category filter
+                    if (this.currentCategory !== 'all' && cmd.category !== this.currentCategory) {
+                        return false;
+                    }
+                    
+                    // Difficulty filter
+                    if (!showEasy && cmd.difficulty === 'easy') return false;
+                    if (!showMedium && cmd.difficulty === 'medium') return false;
+                    if (!showHard && cmd.difficulty === 'hard') return false;
+                    
+                    // Search filter
+                    if (searchTerm && !cmd.command.toLowerCase().includes(searchTerm) && 
+                        !cmd.description.toLowerCase().includes(searchTerm) &&
+                        !cmd.flags.some(flag => flag.toLowerCase().includes(searchTerm))) {
+                        return false;
+                    }
+                    
+                    return true;
+                });
+                
+                this.renderCommands();
+            }
+            
+            renderCommands() {
+                const grid = document.getElementById('commandGrid');
+                const noResults = document.getElementById('noResults');
+                
+                if (this.filteredCommands.length === 0) {
+                    grid.innerHTML = '';
+                    noResults.classList.remove('hidden');
+                    return;
+                }
+                
+                noResults.classList.add('hidden');
+                
+                grid.innerHTML = this.filteredCommands.map(cmd => `
+                    <div class="command-card glass rounded-lg p-6 difficulty-${cmd.difficulty}" data-id="${cmd.id}">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="flex-1">
+                                <div class="font-mono text-lg text-cyan-400 mb-2">${cmd.command}</div>
+                                <p class="text-gray-300 mb-2">${cmd.description}</p>
+                                <div class="flex items-center gap-2 text-sm">
+                                    <span class="px-2 py-1 bg-gray-700 rounded text-xs">${cmd.category}</span>
+                                    <span class="px-2 py-1 rounded text-xs difficulty-${cmd.difficulty}">${cmd.difficulty}</span>
+                                </div>
+                            </div>
+                            <button class="copy-btn ml-4 px-3 py-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded text-sm transition-colors" 
+                                    data-command="${cmd.command}">
+                                Copy
+                            </button>
+                        </div>
+                        
+                        <div class="expandable-content">
+                            <div class="border-t border-gray-700 pt-4">
+                                <h4 class="font-bold text-amber-400 mb-2">Details</h4>
+                                <p class="text-gray-400 text-sm mb-4">${cmd.details}</p>
+                                
+                                <h4 class="font-bold text-green-400 mb-2">Example</h4>
+                                <div class="font-mono text-sm text-gray-300 bg-gray-800 p-2 rounded mb-4">${cmd.example}</div>
+                                
+                                <h4 class="font-bold text-cyan-400 mb-2">Use Case</h4>
+                                <p class="text-gray-400 text-sm">${cmd.useCase}</p>
+                            </div>
+                        </div>
+                        
+                        <button class="expand-btn mt-4 text-cyan-400 hover:text-cyan-300 text-sm transition-colors">
+                            Show Details ▼
+                        </button>
+                    </div>
+                `).join('');
+                
+                // Add event listeners for new elements
+                this.setupCardEventListeners();
+            }
+            
+            setupCardEventListeners() {
+                // Expand/collapse functionality
+                document.querySelectorAll('.expand-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const card = e.target.closest('.command-card');
+                        const content = card.querySelector('.expandable-content');
+                        
+                        if (content.classList.contains('expanded')) {
+                            content.classList.remove('expanded');
+                            e.target.textContent = 'Show Details ▼';
+                        } else {
+                            content.classList.add('expanded');
+                            e.target.textContent = 'Hide Details ▲';
+                        }
+                    });
+                });
+                
+                // Copy functionality
+                document.querySelectorAll('.copy-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const command = e.target.dataset.command;
+                        navigator.clipboard.writeText(command).then(() => {
+                            const originalText = e.target.textContent;
+                            e.target.textContent = 'Copied!';
+                            e.target.classList.add('bg-green-600');
+                            
+                            setTimeout(() => {
+                                e.target.textContent = originalText;
+                                e.target.classList.remove('bg-green-600');
+                            }, 2000);
+                        });
+                    });
+                });
+            }
+            
+            initializeAnimations() {
+                // Animate elements on scroll
+                const observerOptions = {
+                    threshold: 0.1,
+                    rootMargin: '0px 0px -50px 0px'
+                };
+                
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            this.animateElement(entry.target);
+                        }
+                    });
+                }, observerOptions);
+                
+                document.querySelectorAll('.fade-in, .slide-in-left, .slide-in-right').forEach(el => {
+                    observer.observe(el);
+                });
+            }
+            
+            animateElement(element) {
+                if (element.classList.contains('fade-in')) {
+                    anime({
+                        targets: element,
+                        opacity: [0, 1],
+                        translateY: [20, 0],
+                        duration: 600,
+                        easing: 'easeOutQuad'
+                    });
+                }
+            }
+            
+            initializeParticles() {
+                // Simple particle system (reuse from main.js)
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const container = document.getElementById('particleBg');
+                
+                canvas.style.position = 'absolute';
+                canvas.style.top = '0';
+                canvas.style.left = '0';
+                canvas.style.width = '100%';
+                canvas.style.height = '100%';
+                canvas.style.pointerEvents = 'none';
+                
+                container.appendChild(canvas);
+                
+                const resizeCanvas = () => {
+                    canvas.width = window.innerWidth;
+                    canvas.height = window.innerHeight;
+                };
+                
+                resizeCanvas();
+                window.addEventListener('resize', resizeCanvas);
+                
+                const particles = [];
+                const particleCount = window.innerWidth < 768 ? 20 : 30;
+                
+                for (let i = 0; i < particleCount; i++) {
+                    particles.push({
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height,
+                        vx: (Math.random() - 0.5) * 0.3,
+                        vy: (Math.random() - 0.5) * 0.3,
+                        size: Math.random() * 1.5 + 0.5,
+                        opacity: Math.random() * 0.3 + 0.1
+                    });
+                }
+                
+                const animate = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    particles.forEach(particle => {
+                        particle.x += particle.vx;
+                        particle.y += particle.vy;
+                        
+                        if (particle.x < 0) particle.x = canvas.width;
+                        if (particle.x > canvas.width) particle.x = 0;
+                        if (particle.y < 0) particle.y = canvas.height;
+                        if (particle.y > canvas.height) particle.y = 0;
+                        
+                        ctx.beginPath();
+                        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(0, 212, 255, ${particle.opacity})`;
+                        ctx.fill();
+                    });
+                    
+                    requestAnimationFrame(animate);
+                };
+                
+                animate();
+            }
+        }
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            new CommandReference();
+        });
+    </script>
+</body>
+</html>

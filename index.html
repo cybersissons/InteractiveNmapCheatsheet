@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nmap Command Builder - Interactive Cheat Sheet</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/typed.js/2.0.12/typed.min.js"></script>
+    <script src="https://unpkg.com/splitting@1.0.6/dist/splitting.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/splitting@1.0.6/dist/splitting.css">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #1a1a1a;
+            --text-primary: #ffffff;
+            --text-secondary: #e0e0e0;
+            --accent-cyan: #00d4ff;
+            --accent-green: #39ff14;
+            --accent-amber: #ff8c00;
+            --error-red: #ff4444;
+            --muted-gray: #2a2a2a;
+        }
+        
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+        
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        
+        /* Animated background */
+        .particle-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at 50% 50%, #001122 0%, #000000 100%);
+        }
+        
+        /* Neon glow effects */
+        .glow-cyan {
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+            border: 1px solid rgba(0, 212, 255, 0.5);
+        }
+        
+        .glow-green {
+            box-shadow: 0 0 20px rgba(57, 255, 20, 0.3);
+            border: 1px solid rgba(57, 255, 20, 0.5);
+        }
+        
+        .glow-amber {
+            box-shadow: 0 0 20px rgba(255, 140, 0, 0.3);
+            border: 1px solid rgba(255, 140, 0, 0.5);
+        }
+        
+        /* Glass morphism */
+        .glass {
+            background: rgba(26, 26, 26, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Command syntax highlighting */
+        .syntax-command { color: var(--accent-cyan); }
+        .syntax-flag { color: var(--accent-green); }
+        .syntax-target { color: var(--accent-amber); }
+        .syntax-comment { color: var(--text-secondary); }
+        
+        /* Interactive elements */
+        .btn-primary {
+            background: linear-gradient(45deg, var(--accent-cyan), var(--accent-green));
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 212, 255, 0.4);
+        }
+        
+        /* Animations */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        
+        .slide-in-left {
+            opacity: 0;
+            transform: translateX(-50px);
+        }
+        
+        .slide-in-right {
+            opacity: 0;
+            transform: translateX(50px);
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent-cyan);
+            border-radius: 4px;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .command-builder {
+                flex-direction: column;
+            }
+            
+            .builder-panel {
+                width: 100% !important;
+                margin-bottom: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="particle-bg" id="particleBg"></div>
+    
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 z-50 glass">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="font-orbitron text-xl font-bold text-cyan-400">
+                    NMAP BUILDER
+                </div>
+                <div class="hidden md:flex space-x-6">
+                    <a href="index.html" class="text-cyan-400 hover:text-cyan-300 transition-colors">Builder</a>
+                    <a href="reference.html" class="text-white hover:text-cyan-300 transition-colors">Reference</a>
+                    <a href="examples.html" class="text-white hover:text-cyan-300 transition-colors">Examples</a>
+                    <a href="safety.html" class="text-white hover:text-cyan-300 transition-colors">Safety</a>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobileMenuBtn" class="text-white">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Hero Section -->
+    <section class="pt-24 pb-12 px-6">
+        <div class="container mx-auto text-center">
+            <div class="hero-content fade-in">
+                <h1 class="font-orbitron text-4xl md:text-6xl font-bold mb-6">
+                    <span class="text-cyan-400">NMAP</span> <span class="text-green-400">COMMAND</span> <span class="text-amber-400">BUILDER</span>
+                </h1>
+                <div class="text-xl md:text-2xl text-gray-300 mb-8">
+                    <span id="typed-text"></span>
+                </div>
+                <p class="text-lg text-gray-400 max-w-3xl mx-auto mb-8">
+                    Generate powerful Nmap commands with our interactive builder. Perfect for network reconnaissance, 
+                    security auditing, and penetration testing. Build, customize, and copy commands instantly.
+                </p>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Command Builder Interface -->
+    <section class="py-12 px-6">
+        <div class="container mx-auto">
+            <div class="command-builder flex flex-col lg:flex-row gap-6">
+                <!-- Left Panel: Scan Types -->
+                <div class="builder-panel lg:w-1/3 slide-in-left">
+                    <div class="glass rounded-lg p-6 glow-cyan">
+                        <h3 class="font-orbitron text-xl font-bold text-cyan-400 mb-4">Scan Types</h3>
+                        <div class="space-y-3">
+                            <label class="flex items-center p-3 rounded hover:bg-gray-800 cursor-pointer transition-colors">
+                                <input type="radio" name="scanType" value="-sS" class="mr-3 text-cyan-400" checked>
+                                <div>
+                                    <div class="font-mono text-cyan-400">-sS</div>
+                                    <div class="text-sm text-gray-400">TCP SYN (stealth)</div>
+                                </div>
+                            </label>
+                            <label class="flex items-center p-3 rounded hover:bg-gray-800 cursor-pointer transition-colors">
+                                <input type="radio" name="scanType" value="-sT" class="mr-3 text-cyan-400">
+                                <div>
+                                    <div class="font-mono text-cyan-400">-sT</div>
+                                    <div class="text-sm text-gray-400">TCP connect()</div>
+                                </div>
+                            </label>
+                            <label class="flex items-center p-3 rounded hover:bg-gray-800 cursor-pointer transition-colors">
+                                <input type="radio" name="scanType" value="-sU" class="mr-3 text-cyan-400">
+                                <div>
+                                    <div class="font-mono text-cyan-400">-sU</div>
+                                    <div class="text-sm text-gray-400">UDP scan</div>
+                                </div>
+                            </label>
+                            <label class="flex items-center p-3 rounded hover:bg-gray-800 cursor-pointer transition-colors">
+                                <input type="radio" name="scanType" value="-A" class="mr-3 text-cyan-400">
+                                <div>
+                                    <div class="font-mono text-cyan-400">-A</div>
+                                    <div class="text-sm text-gray-400">Aggressive scan</div>
+                                </div>
+                            </label>
+                        </div>
+                        
+                        <h3 class="font-orbitron text-xl font-bold text-cyan-400 mt-8 mb-4">Timing Template</h3>
+                        <div class="space-y-2">
+                            <label class="flex items-center justify-between">
+                                <span class="text-sm">Paranoid (-T0)</span>
+                                <input type="radio" name="timing" value="-T0" class="text-cyan-400">
+                            </label>
+                            <label class="flex items-center justify-between">
+                                <span class="text-sm">Sneaky (-T1)</span>
+                                <input type="radio" name="timing" value="-T1" class="text-cyan-400">
+                            </label>
+                            <label class="flex items-center justify-between">
+                                <span class="text-sm">Normal (-T3)</span>
+                                <input type="radio" name="timing" value="-T3" class="text-cyan-400" checked>
+                            </label>
+                            <label class="flex items-center justify-between">
+                                <span class="text-sm">Aggressive (-T4)</span>
+                                <input type="radio" name="timing" value="-T4" class="text-cyan-400">
+                            </label>
+                            <label class="flex items-center justify-between">
+                                <span class="text-sm">Insane (-T5)</span>
+                                <input type="radio" name="timing" value="-T5" class="text-cyan-400">
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Center Panel: Target Configuration -->
+                <div class="builder-panel lg:w-1/3 slide-in-left">
+                    <div class="glass rounded-lg p-6 glow-green">
+                        <h3 class="font-orbitron text-xl font-bold text-green-400 mb-4">Target Configuration</h3>
+                        
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium mb-2">Target Host</label>
+                            <input type="text" id="targetHost" placeholder="192.168.1.1 or example.com" 
+                                   class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white focus:border-green-400 focus:outline-none">
+                        </div>
+                        
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium mb-2">Port Selection</label>
+                            <div class="space-y-2">
+                                <label class="flex items-center">
+                                    <input type="radio" name="portType" value="default" class="mr-2 text-green-400" checked>
+                                    <span class="text-sm">Default (top 1000)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="radio" name="portType" value="all" class="mr-2 text-green-400">
+                                    <span class="text-sm">All ports (1-65535)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="radio" name="portType" value="custom" class="mr-2 text-green-400">
+                                    <span class="text-sm">Custom ports</span>
+                                </label>
+                            </div>
+                            <input type="text" id="customPorts" placeholder="22,80,443 or 1-1024" 
+                                   class="w-full px-3 py-2 mt-2 bg-gray-800 border border-gray-600 rounded text-white focus:border-green-400 focus:outline-none hidden">
+                        </div>
+                        
+                        <div class="space-y-3">
+                            <label class="flex items-center">
+                                <input type="checkbox" id="serviceDetection" class="mr-2 text-green-400">
+                                <span class="text-sm">Service Detection (-sV)</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="osDetection" class="mr-2 text-green-400">
+                                <span class="text-sm">OS Detection (-O)</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="skipDiscovery" class="mr-2 text-green-400">
+                                <span class="text-sm">Skip Host Discovery (-Pn)</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="showOpen" class="mr-2 text-green-400">
+                                <span class="text-sm">Show Open Only (--open)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Right Panel: Advanced Options -->
+                <div class="builder-panel lg:w-1/3 slide-in-right">
+                    <div class="glass rounded-lg p-6 glow-amber">
+                        <h3 class="font-orbitron text-xl font-bold text-amber-400 mb-4">Advanced Options</h3>
+                        
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium mb-2">NSE Scripts</label>
+                            <select id="nseScript" class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white focus:border-amber-400 focus:outline-none">
+                                <option value="">None</option>
+                                <option value="--script default">Default scripts</option>
+                                <option value="--script vuln">Vulnerability detection</option>
+                                <option value="--script discovery">Discovery scripts</option>
+                                <option value="--script http-title">HTTP title</option>
+                                <option value="--script ssl-enum-ciphers">SSL ciphers</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium mb-2">Output Format</label>
+                            <div class="space-y-2">
+                                <label class="flex items-center">
+                                    <input type="radio" name="outputFormat" value="" class="mr-2 text-amber-400" checked>
+                                    <span class="text-sm">Normal output</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="radio" name="outputFormat" value="-oX" class="mr-2 text-amber-400">
+                                    <span class="text-sm">XML output (-oX)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="radio" name="outputFormat" value="-oN" class="mr-2 text-amber-400">
+                                    <span class="text-sm">Normal file (-oN)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="radio" name="outputFormat" value="-oA" class="mr-2 text-amber-400">
+                                    <span class="text-sm">All formats (-oA)</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium mb-2">Verbosity</label>
+                            <div class="space-y-2">
+                                <label class="flex items-center">
+                                    <input type="radio" name="verbosity" value="" class="mr-2 text-amber-400" checked>
+                                    <span class="text-sm">Normal</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="radio" name="verbosity" value="-v" class="mr-2 text-amber-400">
+                                    <span class="text-sm">Verbose (-v)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="radio" name="verbosity" value="-vv" class="mr-2 text-amber-400">
+                                    <span class="text-sm">Very verbose (-vv)</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Command Output -->
+            <div class="mt-8 fade-in">
+                <div class="glass rounded-lg p-6 glow-cyan">
+                    <h3 class="font-orbitron text-xl font-bold text-cyan-400 mb-4">Generated Command</h3>
+                    <div class="relative">
+                        <div id="commandOutput" class="font-mono text-lg p-4 bg-gray-900 rounded border border-cyan-400 min-h-[60px] flex items-center">
+                            <span class="syntax-comment"># Configure your scan options above to generate command</span>
+                        </div>
+                        <button id="copyCommand" class="absolute top-2 right-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded transition-colors">
+                            Copy
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Quick Examples -->
+    <section class="py-12 px-6">
+        <div class="container mx-auto">
+            <h2 class="font-orbitron text-3xl font-bold text-center mb-12 fade-in">
+                <span class="text-cyan-400">Quick</span> <span class="text-green-400">Examples</span>
+            </h2>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="glass rounded-lg p-6 hover:glow-cyan transition-all duration-300 cursor-pointer quick-example fade-in" 
+                     data-command="nmap -sS -p 22,80,443 example.com">
+                    <h3 class="font-orbitron text-lg font-bold text-cyan-400 mb-2">Web Server Scan</h3>
+                    <p class="text-gray-400 text-sm mb-3">Quick scan of common web ports</p>
+                    <div class="font-mono text-sm text-gray-300">nmap -sS -p 22,80,443 example.com</div>
+                </div>
+                
+                <div class="glass rounded-lg p-6 hover:glow-green transition-all duration-300 cursor-pointer quick-example fade-in"
+                     data-command="nmap -sS -p- -T4 -Pn 192.168.1.0/24">
+                    <h3 class="font-orbitron text-lg font-bold text-green-400 mb-2">Full Network Scan</h3>
+                    <p class="text-gray-400 text-sm mb-3">All ports on entire subnet</p>
+                    <div class="font-mono text-sm text-gray-300">nmap -sS -p- -T4 -Pn 192.168.1.0/24</div>
+                </div>
+                
+                <div class="glass rounded-lg p-6 hover:glow-amber transition-all duration-300 cursor-pointer quick-example fade-in"
+                     data-command="nmap -A -sV -O target.com">
+                    <h3 class="font-orbitron text-lg font-bold text-amber-400 mb-2">Aggressive Scan</h3>
+                    <p class="text-gray-400 text-sm mb-3">Full service and OS detection</p>
+                    <div class="font-mono text-sm text-gray-300">nmap -A -sV -O target.com</div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Footer -->
+    <footer class="py-8 px-6 border-t border-gray-800">
+        <div class="container mx-auto text-center">
+            <p class="text-gray-400">
+                © 2025 Nmap Command Builder. Educational tool for cybersecurity professionals.
+            </p>
+            <p class="text-sm text-gray-500 mt-2">
+                Always obtain proper authorization before scanning networks.
+            </p>
+        </div>
+    </footer>
+    
+    <script src="main.js"></script>
+</body>
+</html>

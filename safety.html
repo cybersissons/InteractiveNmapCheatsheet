@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nmap Safety & Troubleshooting Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #1a1a1a;
+            --text-primary: #ffffff;
+            --text-secondary: #e0e0e0;
+            --accent-cyan: #00d4ff;
+            --accent-green: #39ff14;
+            --accent-amber: #ff8c00;
+            --error-red: #ff4444;
+            --muted-gray: #2a2a2a;
+        }
+        
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+        
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        
+        /* Animated background */
+        .particle-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at 50% 50%, #001122 0%, #000000 100%);
+        }
+        
+        /* Glass morphism */
+        .glass {
+            background: rgba(26, 26, 26, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Glow effects */
+        .glow-cyan { box-shadow: 0 0 20px rgba(0, 212, 255, 0.3); }
+        .glow-green { box-shadow: 0 0 20px rgba(57, 255, 20, 0.3); }
+        .glow-amber { box-shadow: 0 0 20px rgba(255, 140, 0, 0.3); }
+        .glow-red { box-shadow: 0 0 20px rgba(255, 68, 68, 0.3); }
+        
+        /* Animations */
+        .fade-in { opacity: 0; transform: translateY(20px); }
+        .slide-in-left { opacity: 0; transform: translateX(-50px); }
+        .slide-in-right { opacity: 0; transform: translateX(50px); }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent-cyan);
+            border-radius: 4px;
+        }
+        
+        /* Accordion styles */
+        .accordion-item {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .accordion-header {
+            background: rgba(42, 42, 42, 0.8);
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+        }
+        
+        .accordion-header:hover {
+            background: rgba(58, 58, 58, 0.8);
+        }
+        
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background: rgba(26, 26, 26, 0.6);
+        }
+        
+        .accordion-content.expanded {
+            max-height: 1000px;
+        }
+        
+        .accordion-content-inner {
+            padding: 1rem;
+        }
+        
+        /* Warning boxes */
+        .warning-box {
+            border-left: 4px solid var(--accent-amber);
+            background: rgba(255, 140, 0, 0.1);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .error-box {
+            border-left: 4px solid var(--error-red);
+            background: rgba(255, 68, 68, 0.1);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .success-box {
+            border-left: 4px solid var(--accent-green);
+            background: rgba(57, 255, 20, 0.1);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        /* Code blocks */
+        .code-block {
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid var(--muted-gray);
+            border-radius: 4px;
+            padding: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        
+        /* Resource cards */
+        .resource-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .resource-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 212, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="particle-bg" id="particleBg"></div>
+    
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 z-50 glass">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="font-orbitron text-xl font-bold text-cyan-400">
+                    NMAP BUILDER
+                </div>
+                <div class="hidden md:flex space-x-6">
+                    <a href="index.html" class="text-white hover:text-cyan-300 transition-colors">Builder</a>
+                    <a href="reference.html" class="text-white hover:text-cyan-300 transition-colors">Reference</a>
+                    <a href="examples.html" class="text-white hover:text-cyan-300 transition-colors">Examples</a>
+                    <a href="safety.html" class="text-cyan-400 hover:text-cyan-300 transition-colors">Safety</a>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobileMenuBtn" class="text-white">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Header Section -->
+    <section class="pt-24 pb-12 px-6">
+        <div class="container mx-auto text-center">
+            <div class="hero-content fade-in">
+                <h1 class="font-orbitron text-4xl md:text-6xl font-bold mb-6">
+                    <span class="text-cyan-400">SAFETY</span> <span class="text-amber-400">GUIDE</span>
+                </h1>
+                <p class="text-lg text-gray-400 max-w-3xl mx-auto mb-8">
+                    Essential safety guidelines, legal considerations, and troubleshooting tips 
+                    for responsible network scanning and security assessment.
+                </p>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Safety Guidelines -->
+    <section class="pb-12 px-6">
+        <div class="container mx-auto">
+            <div class="warning-box fade-in">
+                <div class="flex items-start">
+                    <div class="text-2xl mr-4">⚠️</div>
+                    <div>
+                        <h3 class="font-bold text-amber-400 text-lg mb-2">Legal Notice</h3>
+                        <p class="text-gray-300">
+                            Network scanning can be illegal without proper authorization. Always ensure you have explicit written permission 
+                            to scan networks and systems you don't own. Unauthorized scanning may violate computer fraud laws and result in criminal charges.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid lg:grid-cols-2 gap-8 mt-8">
+                <!-- Safety Checklist -->
+                <div class="glass rounded-lg p-6 glow-green slide-in-left">
+                    <h3 class="font-orbitron text-xl font-bold text-green-400 mb-4">Safety Checklist</h3>
+                    
+                    <div class="space-y-4">
+                        <label class="flex items-start">
+                            <input type="checkbox" class="mt-1 mr-3 text-green-400">
+                            <div>
+                                <div class="font-medium text-white">Authorization Obtained</div>
+                                <div class="text-sm text-gray-400">Do you have written permission to scan the target network?</div>
+                            </div>
+                        </label>
+                        
+                        <label class="flex items-start">
+                            <input type="checkbox" class="mt-1 mr-3 text-green-400">
+                            <div>
+                                <div class="font-medium text-white">Scope Defined</div>
+                                <div class="text-sm text-gray-400">Are the scanning targets and methods clearly defined?</div>
+                            </div>
+                        </label>
+                        
+                        <label class="flex items-start">
+                            <input type="checkbox" class="mt-1 mr-3 text-green-400">
+                            <div>
+                                <div class="font-medium text-white">Timing Considered</div>
+                                <div class="text-sm text-gray-400">Have you scheduled scans to avoid business hours?</div>
+                            </div>
+                        </label>
+                        
+                        <label class="flex items-start">
+                            <input type="checkbox" class="mt-1 mr-3 text-green-400">
+                            <div>
+                                <div class="font-medium text-white">Impact Assessed</div>
+                                <div class="text-sm text-gray-400">Have you considered potential impact on network performance?</div>
+                            </div>
+                        </label>
+                        
+                        <label class="flex items-start">
+                            <input type="checkbox" class="mt-1 mr-3 text-green-400">
+                            <div>
+                                <div class="font-medium text-white">Response Plan Ready</div>
+                                <div class="text-sm text-gray-400">Do you have a plan if scanning causes issues?</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Best Practices -->
+                <div class="glass rounded-lg p-6 glow-cyan slide-in-right">
+                    <h3 class="font-orbitron text-xl font-bold text-cyan-400 mb-4">Best Practices</h3>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-start">
+                            <div class="text-cyan-400 mr-3 mt-1">•</div>
+                            <div>
+                                <div class="font-medium text-white">Start with Discovery</div>
+                                <div class="text-sm text-gray-400">Begin with host discovery before port scanning to minimize impact</div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start">
+                            <div class="text-cyan-400 mr-3 mt-1">•</div>
+                            <div>
+                                <div class="font-medium text-white">Use Appropriate Timing</div>
+                                <div class="text-sm text-gray-400">Choose timing templates based on network stability and requirements</div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start">
+                            <div class="text-cyan-400 mr-3 mt-1">•</div>
+                            <div>
+                                <div class="font-medium text-white">Limit Port Ranges</div>
+                                <div class="text-sm text-gray-400">Scan only necessary ports instead of full 1-65535 range</div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start">
+                            <div class="text-cyan-400 mr-3 mt-1">•</div>
+                            <div>
+                                <div class="font-medium text-white">Monitor Network Impact</div>
+                                <div class="text-sm text-gray-400">Watch for performance degradation during scans</div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start">
+                            <div class="text-cyan-400 mr-3 mt-1">•</div>
+                            <div>
+                                <div class="font-medium text-white">Document Everything</div>
+                                <div class="text-sm text-gray-400">Keep detailed logs of scanning activities and results</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Troubleshooting Guide -->
+    <section class="pb-12 px-6">
+        <div class="container mx-auto">
+            <h2 class="font-orbitron text-3xl font-bold text-center mb-12 fade-in">
+                <span class="text-amber-400">Troubleshooting</span> <span class="text-cyan-400">Guide</span>
+            </h2>
+            
+            <div class="space-y-4">
+                <!-- Common Issues -->
+                <div class="accordion-item fade-in">
+                    <div class="accordion-header" data-target="issue1">
+                        <div>
+                            <h3 class="font-bold text-red-400">Permission Denied Errors</h3>
+                            <p class="text-sm text-gray-400">Cannot perform SYN scans or raw socket operations</p>
+                        </div>
+                        <div class="text-cyan-400">▼</div>
+                    </div>
+                    <div class="accordion-content" id="issue1">
+                        <div class="accordion-content-inner">
+                            <div class="error-box">
+                                <h4 class="font-bold text-red-400 mb-2">Problem</h4>
+                                <p class="text-gray-300 mb-4">
+                                    TCP SYN scans (-sS) and other raw socket operations require root/administrator privileges. 
+                                    Without proper permissions, you'll get "Permission denied" errors.
+                                </p>
+                            </div>
+                            
+                            <h4 class="font-bold text-green-400 mb-2">Solutions</h4>
+                            <div class="space-y-3">
+                                <div>
+                                    <div class="font-medium text-white mb-2">Run with sudo (Linux/Mac):</div>
+                                    <div class="code-block">sudo nmap -sS target.com</div>
+                                </div>
+                                
+                                <div>
+                                    <div class="font-medium text-white mb-2">Use TCP connect scan instead:</div>
+                                    <div class="code-block">nmap -sT target.com</div>
+                                    <div class="text-sm text-gray-400 mt-2">This doesn't require root privileges but is more detectable</div>
+                                </div>
+                                
+                                <div>
+                                    <div class="font-medium text-white mb-2">Run as Administrator (Windows):</div>
+                                    <div class="text-gray-300">Right-click Command Prompt → "Run as administrator"</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="accordion-item fade-in">
+                    <div class="accordion-header" data-target="issue2">
+                        <div>
+                            <h3 class="font-bold text-amber-400">Slow or Hanging Scans</h3>
+                            <p class="text-sm text-gray-400">Scans taking too long or appearing to freeze</p>
+                        </div>
+                        <div class="text-cyan-400">▼</div>
+                    </div>
+                    <div class="accordion-content" id="issue2">
+                        <div class="accordion-content-inner">
+                            <div class="warning-box">
+                                <h4 class="font-bold text-amber-400 mb-2">Problem</h4>
+                                <p class="text-gray-300 mb-4">
+                                    Network scans can be slow due to timeouts, firewalls, or network congestion. 
+                                    UDP scans are particularly slow due to the nature of the protocol.
+                                </p>
+                            </div>
+                            
+                            <h4 class="font-bold text-green-400 mb-2">Solutions</h4>
+                            <div class="space-y-3">
+                                <div>
+                                    <div class="font-medium text-white mb-2">Use faster timing template:</div>
+                                    <div class="code-block">nmap -T4 target.com</div>
+                                </div>
+                                
+                                <div>
+                                    <div class="font-medium text-white mb-2">Set host timeout:</div>
+                                    <div class="code-block">nmap --host-timeout 30m target.com</div>
+                                </div>
+                                
+                                <div>
+                                    <div class="font-medium text-white mb-2">Reduce retry attempts:</div>
+                                    <div class="code-block">nmap --max-retries 2 target.com</div>
+                                </div>
+                                
+                                <div>
+                                    <div class="font-medium text-white mb-2">Skip host discovery:</div>
+                                    <div class="code-block">nmap -Pn target.com</div>
+                                    <div class="text-sm text-gray-400 mt-2">Useful when you know the host is up</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="accordion-item fade-in">
+                    <div class="accordion-header" data-target="issue3">
+                        <div>
+                            <h3 class="font-bold text-cyan-400">No Results or All Ports Filtered</h3>
+                            <p class="text-sm text-gray-400">Scan shows no open ports or everything appears filtered</p>
+                        </div>
+                        <div class="text-cyan-400">▼</div>
+                    </div>
+                    <div class="accordion-content" id="issue3">
+                        <div class="accordion-content-inner">
+                            <div class="warning-box">
+                                <h4 class="font-bold text-amber-400 mb-2">Problem</h4>
+                                <p class="text-gray-300 mb-4">
+                                    Firewalls or intrusion prevention systems may be blocking or filtering scan traffic. 
+                                    This can result in all ports appearing filtered or closed.
+                                </p>
+                            </div>
+                            
+                            <h4 class="font-bold text-green-400 mb-2">Solutions</h4>
+                            <div class="space-y-3">
+                                <div>
+                                    <div class="font-medium text-white mb-2">Try different scan types:</div>
+                                    <div class="code-block">nmap -sT target.com</div>
+                                    <div class="text-sm text-gray-400 mt-2">TCP connect scan may bypass some filters</div>
+                                </div>
+                                
+                                <div>
+                                    <div class="font-medium text-white mb-2">Use ACK scan to detect firewall rules:</div>
+                                    <div class="code-block">nmap -sA target.com</div>
+                                </div>
+                                
+                                <div>
+                                    <div class="font-medium text-white mb-2">Try fragmenting packets:</div>
+                                    <div class="code-block">nmap -f target.com</div>
+                                </div>
+                                
+                                <div>
+                                    <div class="font-medium text-white mb-2">Use decoy scanning:</div>
+                                    <div class="code-block">nmap -D RND:10 target.com</div>
+                                    <div class="text-sm text-gray-400 mt-2">Hides scan among decoy traffic</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="accordion-item fade-in">
+                    <div class="accordion-header" data-target="issue4">
+                        <div>
+                            <h3 class="font-bold text-red-400">Service Detection Failures</h3>
+                            <p class="text-sm text-gray-400">Services not identified or incorrect version detection</p>
+                        </div>
+                        <div class="text-cyan-400">▼</div>
+                    </div>
+                    <div class="accordion-content" id="issue4">
+                        <div class="accordion-content-inner">
+                            <div class="error-box">
+                                <h4 class="font-bold text-red-400 mb-2">Problem</h4>
+                                <p class="text-gray-300 mb-4">
+                                    Service version detection may fail due to firewalls, non-standard service configurations, 
+                                    or services that don't respond to standard probes.
+                                </p>
+                            </div>
+                            
+                            <h4 class="font-bold text-green-400 mb-2">Solutions</h4>
+                            <div class="space-y-3">
+                                <div>
+                                    <div class="font-medium text-white mb-2">Increase version detection intensity:</div>
+                                    <div class="code-block">nmap -sV --version-intensity 9 target.com</div>
+                                </div>
+                                
+                                <div>
+                                    <div class="font-medium text-white mb-2">Try all version probes:</div>
+                                    <div class="code-block">nmap -sV --version-all target.com</div>
+                                </div>
+                                
+                                <div>
+                                    <div class="font-medium text-white mb-2">Use lighter version detection:</div>
+                                    <div class="code-block">nmap -sV --version-light target.com</div>
+                                    <div class="text-sm text-gray-400 mt-2">Faster but less comprehensive</div>
+                                </div>
+                                
+                                <div>
+                                    <div class="font-medium text-white mb-2">Combine with NSE scripts:</div>
+                                    <div class="code-block">nmap -sV --script banner target.com</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Legal and Ethical Considerations -->
+    <section class="pb-12 px-6">
+        <div class="container mx-auto">
+            <h2 class="font-orbitron text-3xl font-bold text-center mb-12 fade-in">
+                <span class="text-red-400">Legal</span> <span class="text-amber-400">Framework</span>
+            </h2>
+            
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="glass rounded-lg p-6 glow-green resource-card fade-in">
+                    <div class="text-4xl mb-4">📋</div>
+                    <h3 class="font-bold text-green-400 mb-2">Authorization</h3>
+                    <p class="text-gray-300 text-sm">
+                        Always obtain explicit written permission before scanning any network or system you don't own. 
+                        Verbal permission is not sufficient for legal protection.
+                    </p>
+                </div>
+                
+                <div class="glass rounded-lg p-6 glow-amber resource-card fade-in">
+                    <div class="text-4xl mb-4">🎯</div>
+                    <h3 class="font-bold text-amber-400 mb-2">Scope Definition</h3>
+                    <p class="text-gray-300 text-sm">
+                        Clearly define scanning scope, methods, and timing in your authorization agreement. 
+                        Stick to the agreed-upon parameters.
+                    </p>
+                </div>
+                
+                <div class="glass rounded-lg p-6 glow-cyan resource-card fade-in">
+                    <div class="text-4xl mb-4">📊</div>
+                    <h3 class="font-bold text-cyan-400 mb-2">Documentation</h3>
+                    <p class="text-gray-300 text-sm">
+                        Maintain detailed logs of all scanning activities, including dates, times, methods used, 
+                        and results obtained.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Resource Links -->
+    <section class="pb-12 px-6">
+        <div class="container mx-auto">
+            <h2 class="font-orbitron text-3xl font-bold text-center mb-12 fade-in">
+                <span class="text-cyan-400">Learning</span> <span class="text-green-400">Resources</span>
+            </h2>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="glass rounded-lg p-6 glow-cyan fade-in">
+                    <h3 class="font-bold text-cyan-400 mb-4">Official Documentation</h3>
+                    <div class="space-y-2 text-sm">
+                        <div>• <a href="https://nmap.org/book/" class="text-cyan-400 hover:text-cyan-300">Nmap Official Guide</a></div>
+                        <div>• <a href="https://nmap.org/man/" class="text-cyan-400 hover:text-cyan-300">Command Reference</a></div>
+                        <div>• <a href="https://nmap.org/nsedoc/" class="text-cyan-400 hover:text-cyan-300">NSE Documentation</a></div>
+                    </div>
+                </div>
+                
+                <div class="glass rounded-lg p-6 glow-green fade-in">
+                    <h3 class="font-bold text-green-400 mb-4">Security Training</h3>
+                    <div class="space-y-2 text-sm">
+                        <div>• <a href="https://www.offensive-security.com/" class="text-green-400 hover:text-green-300">Offensive Security</a></div>
+                        <div>• <a href="https://www.cybrary.it/" class="text-green-400 hover:text-green-300">Cybrary</a></div>
+                        <div>• <a href="https://www.sans.org/" class="text-green-400 hover:text-green-300">SANS Institute</a></div>
+                    </div>
+                </div>
+                
+                <div class="glass rounded-lg p-6 glow-amber fade-in">
+                    <h3 class="font-bold text-amber-400 mb-4">Practice Labs</h3>
+                    <div class="space-y-2 text-sm">
+                        <div>• <a href="https://www.hackthebox.com/" class="text-amber-400 hover:text-amber-300">Hack The Box</a></div>
+                        <div>• <a href="https://tryhackme.com/" class="text-amber-400 hover:text-amber-300">TryHackMe</a></div>
+                        <div>• <a href="https://www.vulnhub.com/" class="text-amber-400 hover:text-amber-300">VulnHub</a></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Footer -->
+    <footer class="py-8 px-6 border-t border-gray-800">
+        <div class="container mx-auto text-center">
+            <p class="text-gray-400">
+                © 2025 Nmap Command Builder. Educational tool for cybersecurity professionals.
+            </p>
+            <p class="text-sm text-gray-500 mt-2">
+                Always obtain proper authorization before scanning networks.
+            </p>
+        </div>
+    </footer>
+    
+    <script>
+        class SafetyGuide {
+            constructor() {
+                this.init();
+            }
+            
+            init() {
+                this.setupEventListeners();
+                this.initializeAnimations();
+                this.initializeParticles();
+            }
+            
+            setupEventListeners() {
+                // Accordion functionality
+                document.querySelectorAll('.accordion-header').forEach(header => {
+                    header.addEventListener('click', (e) => {
+                        const targetId = e.currentTarget.dataset.target;
+                        const content = document.getElementById(targetId);
+                        const arrow = e.currentTarget.querySelector('div:last-child');
+                        
+                        if (content.classList.contains('expanded')) {
+                            content.classList.remove('expanded');
+                            arrow.textContent = '▼';
+                        } else {
+                            // Close all other accordions
+                            document.querySelectorAll('.accordion-content').forEach(acc => {
+                                acc.classList.remove('expanded');
+                            });
+                            document.querySelectorAll('.accordion-header div:last-child').forEach(arr => {
+                                arr.textContent = '▼';
+                            });
+                            
+                            // Open clicked accordion
+                            content.classList.add('expanded');
+                            arrow.textContent = '▲';
+                        }
+                    });
+                });
+                
+                // Mobile menu
+                document.getElementById('mobileMenuBtn').addEventListener('click', () => {
+                    alert('Mobile menu - navigate to other pages');
+                });
+            }
+            
+            initializeAnimations() {
+                const observerOptions = {
+                    threshold: 0.1,
+                    rootMargin: '0px 0px -50px 0px'
+                };
+                
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            this.animateElement(entry.target);
+                        }
+                    });
+                }, observerOptions);
+                
+                document.querySelectorAll('.fade-in, .slide-in-left, .slide-in-right').forEach(el => {
+                    observer.observe(el);
+                });
+            }
+            
+            animateElement(element) {
+                if (element.classList.contains('fade-in')) {
+                    anime({
+                        targets: element,
+                        opacity: [0, 1],
+                        translateY: [20, 0],
+                        duration: 600,
+                        easing: 'easeOutQuad'
+                    });
+                } else if (element.classList.contains('slide-in-left')) {
+                    anime({
+                        targets: element,
+                        opacity: [0, 1],
+                        translateX: [-50, 0],
+                        duration: 600,
+                        easing: 'easeOutQuad'
+                    });
+                } else if (element.classList.contains('slide-in-right')) {
+                    anime({
+                        targets: element,
+                        opacity: [0, 1],
+                        translateX: [50, 0],
+                        duration: 600,
+                        easing: 'easeOutQuad'
+                    });
+                }
+            }
+            
+            initializeParticles() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const container = document.getElementById('particleBg');
+                
+                canvas.style.position = 'absolute';
+                canvas.style.top = '0';
+                canvas.style.left = '0';
+                canvas.style.width = '100%';
+                canvas.style.height = '100%';
+                canvas.style.pointerEvents = 'none';
+                
+                container.appendChild(canvas);
+                
+                const resizeCanvas = () => {
+                    canvas.width = window.innerWidth;
+                    canvas.height = window.innerHeight;
+                };
+                
+                resizeCanvas();
+                window.addEventListener('resize', resizeCanvas);
+                
+                const particles = [];
+                const particleCount = window.innerWidth < 768 ? 15 : 25;
+                
+                for (let i = 0; i < particleCount; i++) {
+                    particles.push({
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height,
+                        vx: (Math.random() - 0.5) * 0.2,
+                        vy: (Math.random() - 0.5) * 0.2,
+                        size: Math.random() * 1 + 0.5,
+                        opacity: Math.random() * 0.2 + 0.1
+                    });
+                }
+                
+                const animate = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    particles.forEach(particle => {
+                        particle.x += particle.vx;
+                        particle.y += particle.vy;
+                        
+                        if (particle.x < 0) particle.x = canvas.width;
+                        if (particle.x > canvas.width) particle.x = 0;
+                        if (particle.y < 0) particle.y = canvas.height;
+                        if (particle.y > canvas.height) particle.y = 0;
+                        
+                        ctx.beginPath();
+                        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(255, 140, 0, ${particle.opacity})`;
+                        ctx.fill();
+                    });
+                    
+                    requestAnimationFrame(animate);
+                };
+                
+                animate();
+            }
+        }
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            new SafetyGuide();
+        });
+    </script>
+</body>
+</html>
