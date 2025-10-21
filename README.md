@@ -1,7 +1,5 @@
-# InteractiveNmapCheatsheet
-Transform complex Nmap commands into an intuitive visual experience! This interactive web application makes network reconnaissance accessible for cybersecurity professionals, students, and enthusiasts.
-
 # 🔍 Nmap Command Builder - Interactive Cheat Sheet
+Transform complex Nmap commands into an intuitive visual experience! This interactive web application makes network reconnaissance accessible for cybersecurity professionals, students, and enthusiasts.
 
 [![GitHub Pages](https://img.shields.io/badge/Live-Demo-green.svg)](YOUR_LIVE_URL)
 [![License](https://img.shields.io/badge/License-Educational-blue.svg)](LICENSE)
